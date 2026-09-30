@@ -221,6 +221,5 @@ with tab5:
                 st.write(res.text)
             except Exception as e:
                 st.error(f"Ошибка обращения к ИИ: {e}")
-```
 
 
