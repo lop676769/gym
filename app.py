@@ -9,11 +9,14 @@ st.set_page_config(
 )
 
 st.title("🏋️‍♂️ Проект: Plateau Breaker (от HTN к Chadlite)")
-st.caption("Персональный трекер массы, силовых, питания и ухода за кожей")
+st.caption(
+    "Персональный трекер массы, силовых, сна, питания и ухода за кожей"
+)
 
 if "food_log" not in st.session_state:
   st.session_state.food_log = []
 
+# --- БОКОВАЯ ПАНЕЛЬ ---
 with st.sidebar:
   st.header("👤 Профиль")
   height = st.number_input("Рост (см)", value=182)
@@ -28,13 +31,15 @@ with st.sidebar:
       help="Бесплатный ключ из Google AI Studio",
   )
 
+# --- ВКЛАДКИ ---
 tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Калькулятор",
     "📸 Сканер Еды (ИИ)",
-    "📅 Дневник и Таблица",
+    "📅 Дневник и Восстановление",
     "🤖 ИИ-Консультант",
 ])
 
+# --- ВКЛАДКА 1: КАЛЬКУЛЯТОР ---
 with tab1:
   st.subheader("Расчёт суточной нормы на набор массы")
   bmr = 10 * current_weight + 6.25 * height - 5 * 18 + 5
@@ -51,6 +56,7 @@ with tab1:
   col3.metric("Жиры", f"{fats} г", "1.0 г/кг")
   col4.metric("Углеводы", f"{carbs} г", "Энергия")
 
+# --- ВКЛАДКА 2: СКАНЕР ЕДЫ ---
 with tab2:
   st.subheader("📸 Распознавание еды по фото")
   uploaded_file = st.file_uploader(
@@ -69,7 +75,7 @@ with tab2:
         with st.spinner("Gemini анализирует порцию..."):
           try:
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel("gemini-2.5-flash")
 
             prompt = """
                         Проанализируй это фото еды.
@@ -90,8 +96,9 @@ with tab2:
           except Exception as e:
             st.error(f"Ошибка при анализе: {e}")
 
+# --- ВКЛАДКА 3: ДНЕВНИК И ВОССТАНОВЛЕНИЕ ---
 with tab3:
-  st.subheader("Ввод данных за день")
+  st.subheader("1. Нагрузка и вес")
   col_date, col_w, col_bench, col_squat = st.columns(4)
   date_val = col_date.date_input("Дата", datetime.date.today())
   weight_val = col_w.number_input(
@@ -104,6 +111,30 @@ with tab3:
       "Присед (рабочий вес/повторы)", value=130.0
   )
 
+  st.divider()
+  st.subheader("2. 💤 Сон и Восстановление ЦНС")
+  col_sleep_h, col_sleep_q = st.columns(2)
+  sleep_hours = col_sleep_h.number_input(
+      "Длительность сна (часов)",
+      min_value=0.0,
+      max_value=16.0,
+      value=8.0,
+      step=0.5,
+  )
+  recovery_quality = col_sleep_q.select_slider(
+      "Качество сна / Готовность к тренировке",
+      options=[
+          "1/5 — Разбитое (нужен отдых / пропуск)",
+          "2/5 — Слабое (усталость)",
+          "3/5 — Нормальное",
+          "4/5 — Хорошее",
+          "5/5 — Полный заряд / Пиковая форма",
+      ],
+      value="4/5 — Хорошее",
+  )
+
+  st.divider()
+  st.subheader("3. 🧖‍♂️️ Кожа и заметки")
   skin_status = st.select_slider(
       "Состояние кожи",
       options=[
@@ -113,22 +144,38 @@ with tab3:
           "Сильное обострение (после зала)",
       ],
   )
-  notes = st.text_input("Заметки (уход, салицилка, самочувствие)")
+  notes = st.text_input(
+      "Заметки (уход, салицилка, бодряки/кофеин, режим делоада)"
+  )
 
   if st.button("Сохранить запись за день"):
     st.success("Данные зафиксированы!")
 
+# --- ВКЛАДКА 4: ИИ-ЧАТ ---
 with tab4:
   st.subheader("Консультант Plateau Breaker")
-  user_msg = st.text_area("Задай вопрос по тренировкам, коже или питанию:")
+  user_msg = st.text_area(
+      "Задай вопрос по тренировкам, восстановлению, коже или питанию:"
+  )
   if st.button("Отправить"):
     if not api_key:
       st.warning("Введи Gemini API Key в левой панели!")
     else:
-      genai.configure(api_key=api_key)
-      model = genai.GenerativeModel("gemini-1.5-flash")
-      res = model.generate_content(
-          f"Ты тренер проекта Plateau Breaker. Ответь пользователю (Рост 182,"
-          f" вес 73 кг, цель 77 кг, жим 105 кг). Вопрос: {user_msg}"
-      )
-      st.write(res.text)
+      try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        prompt_text = f"""
+                Ты эксперт-тренер и биохакер проекта Plateau Breaker.
+                Параметры атлета: Рост {height} см, Вес {current_weight} кг, Цель {target_weight} кг.
+                Силовые: Жим {bench_val} кг, Присед {squat_val} кг.
+                Данные по восстановлению: Сон {sleep_hours} часов, Самочувствие: {recovery_quality}.
+                Состояние кожи: {skin_status}.
+
+                Вопрос пользователя: {user_msg}
+                Учитывай уровень восстановления (сон/ЦНС) и прогресс силовых при ответе.
+                """
+        res = model.generate_content(prompt_text)
+        st.write(res.text)
+      except Exception as e:
+        st.error(f"Ошибка обращения к ИИ: {e}")
+
