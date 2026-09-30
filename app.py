@@ -1,4 +1,6 @@
 import datetime
+import json
+import os
 import google.generativeai as genai
 import pandas as pd
 from PIL import Image
@@ -8,12 +10,31 @@ st.set_page_config(
     page_title="Plateau Breaker", page_icon="🏋️‍♂️", layout="wide"
 )
 
-st.title("🏋️‍♂️ Проект: Plateau Breaker (от HTN к Chadlite)")
+st.title("🏋️️‍♂️ Проект: Plateau Breaker (от HTN к Chadlite)")
 st.caption("Персональный трекер тренировок, массы, питания, восстановления и кожи")
 
-# Инициализация хранилища сессии
+# --- ЛОГИКА СОХРАНЕНИЯ В ФАЙЛ ---
+DATA_FILE = "workouts.json"
+
+
+def load_history():
+  if os.path.exists(DATA_FILE):
+    try:
+      with open(DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+    except Exception:
+      return []
+  return []
+
+
+def save_history(history):
+  with open(DATA_FILE, "w", encoding="utf-8") as f:
+    json.dump(history, f, ensure_ascii=False, indent=2)
+
+
+# Инициализация хранилища сессии из файла
 if "workout_history" not in st.session_state:
-  st.session_state.workout_history = []
+  st.session_state.workout_history = load_history()
 
 # --- БОКОВАЯ ПАНЕЛЬ ---
 with st.sidebar:
@@ -24,13 +45,14 @@ with st.sidebar:
 
   st.divider()
   st.header("🔑 ИИ Интеграция")
+
+  # Автоматическая подгрузка ключа из Secrets или ввод вручную
+  saved_key = st.secrets.get("GEMINI_API_KEY", "")
   api_key = st.text_input(
       "Gemini API Key",
+      value=saved_key,
       type="password",
       help="Бесплатный ключ из Google AI Studio",
-  )
-  st.caption(
-      "Каждая открытая вкладка работает независимо для каждого пользователя."
   )
 
 # --- ВКЛАДКИ ---
@@ -124,13 +146,17 @@ with tab1:
           st.markdown("### 📊 Результаты разбора тренировки:")
           st.markdown(response.text)
 
-          st.session_state.workout_history.append({
-              "Дата": workout_date,
+          # Добавляем запись и СОХРАНЯЕМ В ФАЙЛ
+          new_entry = {
+              "Дата": str(workout_date),
               "Тип": workout_type,
               "Нагрузка": rpe_level,
               "Заметки": workout_notes,
-          })
-          st.success("Тренировка успешно сохранена в дневник!")
+          }
+          st.session_state.workout_history.append(new_entry)
+          save_history(st.session_state.workout_history)
+
+          st.success("Тренировка сохранена на диск! Теперь она не сотрется.")
 
         except Exception as e:
           st.error(f"Ошибка обращения к ИИ: {e}")
@@ -261,6 +287,7 @@ with tab5:
         st.write(res.text)
       except Exception as e:
         st.error(f"Ошибка обращения к ИИ: {e}")
+
 
 
 
