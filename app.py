@@ -75,7 +75,7 @@ with tab2:
         with st.spinner("Gemini анализирует порцию..."):
           try:
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-3.8-flash")
 
             prompt = """
                         Проанализируй это фото еды.
@@ -134,7 +134,7 @@ with tab3:
   )
 
   st.divider()
-  st.subheader("3. 🧖‍♂️️ Кожа и заметки")
+  st.subheader("3. 🧖‍♂️ Кожа и заметки")
   skin_status = st.select_slider(
       "Состояние кожи",
       options=[
@@ -163,7 +163,7 @@ with tab4:
     else:
       try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3.8-flash")
         prompt_text = f"""
                 Ты эксперт-тренер и биохакер проекта Plateau Breaker.
                 Параметры атлета: Рост {height} см, Вес {current_weight} кг, Цель {target_weight} кг.
@@ -178,4 +178,5 @@ with tab4:
         st.write(res.text)
       except Exception as e:
         st.error(f"Ошибка обращения к ИИ: {e}")
+
 
